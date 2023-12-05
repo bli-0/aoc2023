@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::RangeInclusive};
 
 fn main() {
     let inputs = include_str!("inputs/05");
@@ -13,6 +13,7 @@ fn main() {
             for map in seed_to_soil {
                 if let Some(x) = map.try_map_num(*seed) {
                     soil = x;
+                    break;
                 }
             }
 
@@ -21,6 +22,7 @@ fn main() {
             for map in soil_to_fert {
                 if let Some(x) = map.try_map_num(soil) {
                     fert = x;
+                    break;
                 }
             }
 
@@ -29,6 +31,7 @@ fn main() {
             for map in fert_to_water {
                 if let Some(x) = map.try_map_num(fert) {
                     water = x;
+                    break;
                 }
             }
 
@@ -37,6 +40,7 @@ fn main() {
             for map in water_to_light {
                 if let Some(x) = map.try_map_num(water) {
                     light = x;
+                    break;
                 }
             }
 
@@ -45,6 +49,7 @@ fn main() {
             for map in light_to_temp {
                 if let Some(x) = map.try_map_num(light) {
                     temp = x;
+                    break;
                 }
             }
 
@@ -55,6 +60,7 @@ fn main() {
             for map in temp_to_humidity {
                 if let Some(x) = map.try_map_num(temp) {
                     humidity = x;
+                    break;
                 }
             }
 
@@ -63,6 +69,7 @@ fn main() {
             for map in humidity_to_location {
                 if let Some(x) = map.try_map_num(humidity) {
                     location = x;
+                    break;
                 }
             }
 
@@ -77,89 +84,97 @@ fn main() {
 
     println!("part1: {}", part1);
 
-    // part2
-    let mut actual_seeds: Vec<i64> = vec![];
+    // part2 start from 0 and do the inverse
+    let mut seed_ranges: Vec<RangeInclusive<i64>> = vec![];
     let mut seed_iter = init_seeds.iter();
     while let Some(first) = seed_iter.next() {
         let range: &i64 = seed_iter.next().unwrap();
-        for seed in *first..=*first + range {
-            actual_seeds.push(seed);
-        }
+        seed_ranges.push(*first..=*first + range);
     }
 
-    let dest_locations2: Vec<i64> = actual_seeds
-        .iter()
-        .map(|seed| {
-            let seed_to_soil = mappings.get(&(Thing::Seed, Thing::Soil)).unwrap();
-            let mut soil = *seed;
-            for map in seed_to_soil {
-                if let Some(x) = map.try_map_num(*seed) {
-                    soil = x;
-                }
+    let mut location = 0;
+    // Work backwards until we hit a seed that is in the initial ranges.
+    loop {
+        let humidity_to_location = mappings.get(&(Thing::Humidity, Thing::Location)).unwrap();
+        let mut humidity: i64 = location;
+        for map in humidity_to_location {
+            if let Some(x) = map.try_map_inverse(location) {
+                humidity = x;
+                break;
             }
+        }
 
-            let soil_to_fert = mappings.get(&(Thing::Soil, Thing::Fertilizer)).unwrap();
-            let mut fert = soil;
-            for map in soil_to_fert {
-                if let Some(x) = map.try_map_num(soil) {
-                    fert = x;
-                }
+        let temp_to_humidity = mappings
+            .get(&(Thing::Temperature, Thing::Humidity))
+            .unwrap();
+        let mut temp: i64 = humidity;
+        for map in temp_to_humidity {
+            if let Some(x) = map.try_map_inverse(humidity) {
+                temp = x;
+                break;
             }
+        }
 
-            let fert_to_water = mappings.get(&(Thing::Fertilizer, Thing::Water)).unwrap();
-            let mut water = fert;
-            for map in fert_to_water {
-                if let Some(x) = map.try_map_num(fert) {
-                    water = x;
-                }
+        let light_to_temp = mappings.get(&(Thing::Light, Thing::Temperature)).unwrap();
+        let mut light: i64 = temp;
+        for map in light_to_temp {
+            if let Some(x) = map.try_map_inverse(temp) {
+                light = x;
+                break;
             }
+        }
 
-            let water_to_light = mappings.get(&(Thing::Water, Thing::Light)).unwrap();
-            let mut light: i64 = water;
-            for map in water_to_light {
-                if let Some(x) = map.try_map_num(water) {
-                    light = x;
-                }
+        let water_to_light = mappings.get(&(Thing::Water, Thing::Light)).unwrap();
+        let mut water: i64 = light;
+        for map in water_to_light {
+            if let Some(x) = map.try_map_inverse(light) {
+                water = x;
+                break;
             }
+        }
 
-            let light_to_temp = mappings.get(&(Thing::Light, Thing::Temperature)).unwrap();
-            let mut temp: i64 = light;
-            for map in light_to_temp {
-                if let Some(x) = map.try_map_num(light) {
-                    temp = x;
-                }
+        let fert_to_water = mappings.get(&(Thing::Fertilizer, Thing::Water)).unwrap();
+        let mut fert = water;
+        for map in fert_to_water {
+            if let Some(x) = map.try_map_inverse(water) {
+                fert = x;
+                break;
             }
-
-            let temp_to_humidity = mappings
-                .get(&(Thing::Temperature, Thing::Humidity))
-                .unwrap();
-            let mut humidity: i64 = temp;
-            for map in temp_to_humidity {
-                if let Some(x) = map.try_map_num(temp) {
-                    humidity = x;
-                }
+        }
+        let soil_to_fert: &Vec<Map> = mappings.get(&(Thing::Soil, Thing::Fertilizer)).unwrap();
+        let mut soil = fert;
+        for map in soil_to_fert {
+            if let Some(x) = map.try_map_inverse(fert) {
+                soil = x;
+                break;
             }
+        }
 
-            let humidity_to_location = mappings.get(&(Thing::Humidity, Thing::Location)).unwrap();
-            let mut location: i64 = humidity;
-            for map in humidity_to_location {
-                if let Some(x) = map.try_map_num(humidity) {
-                    location = x;
-                }
+        let seed_to_soil: &Vec<Map> = mappings.get(&(Thing::Seed, Thing::Soil)).unwrap();
+        let mut seed = soil;
+        for map in seed_to_soil {
+            if let Some(x) = map.try_map_inverse(soil) {
+                seed = x;
+                break;
             }
+        }
 
-            location
-        })
-        .collect();
+        let mut found = false;
+        for seed_range in seed_ranges.iter() {
+            if seed_range.contains(&seed) {
+                found = true;
+                break;
+            }
+        }
 
-    println!("{:?}", dest_locations2);
+        if found {
+            break;
+        }
 
-    let part2 = dest_locations2
-        .iter()
-        .reduce(|a, b| if a < b { a } else { b })
-        .unwrap();
+        location += 1;
+    }
 
-    println!("part2: {}", part2);
+    println!("part2: {}", location);
 }
 
 fn parse(inputs: &str) -> (Vec<i64>, HashMap<(Thing, Thing), Vec<Map>>) {
@@ -377,6 +392,14 @@ impl Map {
         if num >= self.orig_start && num <= self.orig_start + self.range {
             let diff = self.orig_start + self.range - num;
             Some(self.dest_start + self.range - diff)
+        } else {
+            None
+        }
+    }
+    fn try_map_inverse(&self, num: i64) -> Option<i64> {
+        if num >= self.dest_start && num <= self.dest_start + self.range {
+            let diff = self.dest_start + self.range - num;
+            Some(self.orig_start + self.range - diff)
         } else {
             None
         }

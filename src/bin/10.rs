@@ -1,4 +1,7 @@
-use std::{collections::HashMap, thread::current};
+use std::{
+    collections::HashMap,
+    fmt::{Display, Write}, thread::current,
+};
 
 fn main() {
     let inputs = include_str!("inputs/10");
@@ -10,8 +13,8 @@ fn main() {
         pipe_grid.visited.insert(current_loc, current_step);
         match pipe_grid.get_next_tile(current_loc) {
             Some(next_loc) => {
-                println!("current loc: {:?}, current step: {}", current_loc, current_step);
                 current_loc = next_loc;
+
                 current_step += 1;
             }
             None => break,
@@ -33,6 +36,16 @@ struct PipeGrid {
 }
 
 impl PipeGrid {
+    #[allow(unused)]
+    fn print(&self) {
+        for l in self.map.iter() {
+            println!();
+            for p in l.iter() {
+                print!("{}", p);
+            }
+        }
+    }
+
     fn new(input: &str) -> Self {
         let mut start_loc = (0_usize, 0_usize);
 
@@ -45,7 +58,7 @@ impl PipeGrid {
                     .map(|(x, c)| {
                         let pipe = Pipe::from(c);
                         if pipe == Pipe::Start {
-                            start_loc = (x, y);
+                            start_loc = (y, x);
                         }
                         pipe
                     })
@@ -65,19 +78,8 @@ impl PipeGrid {
     // Gets the next possible tile.
     // If we end up looping, then return None.
     fn get_next_tile(&self, current: (usize, usize)) -> Option<(usize, usize)> {
-        match self.map[current.1][current.0] {
+        match self.map[current.0][current.1] {
             Pipe::VertLine => {
-                if self.is_visited((current.0, current.1 - 1))
-                    && self.is_visited((current.0, current.1 + 1))
-                {
-                    None
-                } else if !self.is_visited((current.0, current.1 - 1)) {
-                    Some((current.0, current.1 - 1))
-                } else {
-                    Some((current.0, current.1 + 1))
-                }
-            }
-            Pipe::HoriLine => {
                 if self.is_visited((current.0 - 1, current.1))
                     && self.is_visited((current.0 + 1, current.1))
                 {
@@ -88,58 +90,73 @@ impl PipeGrid {
                     Some((current.0 + 1, current.1))
                 }
             }
-            Pipe::L => {
-                if self.is_visited((current.0, current.1 - 1))
-                    && self.is_visited((current.0 + 1, current.1))
-                {
-                    None
-                } else if !self.is_visited((current.0, current.1 - 1)) {
-                    Some((current.0, current.1 - 1))
-                } else {
-                    Some((current.0 + 1, current.1))
-                }
-            }
-            Pipe::J => {
-                if self.is_visited((current.0, current.1 - 1))
+            Pipe::HoriLine => {
+                if self.is_visited((current.0, current.1 + 1))
                     && self.is_visited((current.0, current.1 - 1))
                 {
                     None
                 } else if !self.is_visited((current.0, current.1 - 1)) {
                     Some((current.0, current.1 - 1))
                 } else {
+                    Some((current.0, current.1 + 1))
+                }
+            }
+            Pipe::L => {
+                if self.is_visited((current.0 - 1, current.1))
+                    && self.is_visited((current.0, current.1 + 1))
+                {
+                    None
+                } else if !self.is_visited((current.0 - 1, current.1)) {
                     Some((current.0 - 1, current.1))
+                } else {
+                    Some((current.0, current.1 + 1))
+                }
+            }
+            Pipe::J => {
+                if self.is_visited((current.0 - 1, current.1))
+                    && self.is_visited((current.0, current.1 - 1))
+                {
+                    None
+                } else if !self.is_visited((current.0 - 1, current.1)) {
+                    Some((current.0 - 1, current.1))
+                } else {
+                    Some((current.0, current.1 - 1))
                 }
             }
             Pipe::Seven => {
-                if self.is_visited((current.0, current.1 + 1))
-                    && self.is_visited((current.0 - 1, current.1))
+                if self.is_visited((current.0 + 1, current.1))
+                    && self.is_visited((current.0, current.1 - 1))
                 {
                     None
-                } else if !self.is_visited((current.0, current.1 + 1)) {
-                    Some((current.0, current.1 + 1))
+                } else if !self.is_visited((current.0 + 1, current.1)) {
+                    Some((current.0 + 1, current.1))
                 } else {
-                    Some((current.0 - 1, current.1))
+                    Some((current.0, current.1 - 1))
                 }
             }
             Pipe::F => {
-                if self.is_visited((current.0, current.1 + 1))
-                    && self.is_visited((current.0 + 1, current.1))
+                if self.is_visited((current.0 + 1, current.1))
+                    && self.is_visited((current.0, current.1 + 1))
                 {
                     None
-                } else if !self.is_visited((current.0, current.1 + 1)) {
-                    Some((current.0, current.1 + 1))
-                } else {
+                } else if !self.is_visited((current.0 + 1, current.1)) {
                     Some((current.0 + 1, current.1))
+                } else {
+                    Some((current.0, current.1 + 1))
                 }
             }
             Pipe::Ground => {
+                println!(
+                    "what is at the current loc?: {}",
+                    self.map[current.1][current.0]
+                );
                 panic!("unexpected ground location: {:?}", current)
             }
             Pipe::Start => {
                 // Start is tricky since we don't know what it is;
                 // Just look at the input and manually pick a direction!
                 // Down looks like it satisfies both the sample input and my actual input.
-                let next_loc = (current.0, current.1 + 1);
+                let next_loc = (current.0 + 1, current.1);
                 Some(next_loc)
             }
         }
@@ -149,15 +166,33 @@ impl PipeGrid {
         self.visited.contains_key(&loc)
     }
 
-    fn get_furthest_step_from_start(&self) -> usize {
-        let (_, max_step) = self.visited.iter().max_by(
-            |a, b| {
-                a.1.cmp(b.1)
-            }
-        ).unwrap();
+    fn get_furthest_step_from_start(&self) -> u64 {
+        let (_, max_step) = self.visited.iter().max_by(|a, b| a.1.cmp(b.1)).unwrap();
 
-        *max_step as usize
+        (max_step + 1) / 2
     }
+
+    // fn get_furthest_step_from_start(&self) -> usize {
+    //     let (_, max_dist_step) = self
+    //         .visited
+    //         .iter()
+    //         .max_by(|a, b| {
+    //             let y1 = a.0 .0;
+    //             let x1 = a.0 .1;
+    //             let y2 = b.0 .0;
+    //             let x2 = b.0 .1;
+
+    //             let abs_diff_x1 = x1.abs_diff(self.start.1);
+    //             let abs_diff_y1 = y1.abs_diff(self.start.0);
+    //             let abs_diff_x2 = x2.abs_diff(self.start.1);
+    //             let abs_diff_y2 = y2.abs_diff(self.start.0);
+
+    //             (abs_diff_x1 + abs_diff_y1).cmp(&(abs_diff_x2 + abs_diff_y2))
+    //         })
+    //         .unwrap();
+
+    //     *max_dist_step as usize
+    // }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -184,6 +219,21 @@ impl From<char> for Pipe {
             '.' => Self::Ground,
             'S' => Self::Start,
             _ => panic!("unexpected char"),
+        }
+    }
+}
+
+impl Display for Pipe {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Pipe::VertLine => f.write_char('|'),
+            Pipe::HoriLine => f.write_char('-'),
+            Pipe::L => f.write_char('L'),
+            Pipe::J => f.write_char('J'),
+            Pipe::Seven => f.write_char('7'),
+            Pipe::F => f.write_char('F'),
+            Pipe::Ground => f.write_char('.'),
+            Pipe::Start => f.write_char('S'),
         }
     }
 }

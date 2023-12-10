@@ -139,7 +139,7 @@ fn part2(schematic: &[Vec<Input>]) -> i64 {
                         adj_num_look_ups.push((i - 1, j + 1, LookDirection::Right));
                     }
                     // Just above (single digit case)
-                    else if is_number(schematic, i-1, j) {
+                    else if is_number(schematic, i - 1, j) {
                         adj_num_count += 1;
                         adj_num_look_ups.push((i - 1, j, LookDirection::Right));
                     }
@@ -187,7 +187,7 @@ fn part2(schematic: &[Vec<Input>]) -> i64 {
                     adj_num_look_ups.push((i + 1, j + 1, LookDirection::Right));
                 }
                 // Just below (single digit case)
-                else if is_number(schematic, i+1, j) {
+                else if is_number(schematic, i + 1, j) {
                     adj_num_count += 1;
                     adj_num_look_ups.push((i + 1, j, LookDirection::Right));
                 }
@@ -308,8 +308,6 @@ fn mark_number(
     }
 }
 
-
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -317,7 +315,9 @@ mod test {
     #[test]
     fn test_part2_inputs() {
         // Sample
-        let inputs: Vec<(&str, i64)> = vec![(r#"467..114..
+        let inputs: Vec<(&str, i64)> = vec![
+            (
+                r#"467..114..
 ...*......
 ..35..633.
 ......#...
@@ -326,42 +326,61 @@ mod test {
 ..592.....
 ......755.
 ...$.*....
-.664.598.."#, 467835),
-// Both all 3
-(r#"890
+.664.598.."#,
+                467835,
+            ),
+            // Both all 3
+            (
+                r#"890
 .*.
-904"#, 804560),
-// Left and Right
-(r#"890
+904"#,
+                804560,
+            ),
+            // Left and Right
+            (
+                r#"890
 .*.
-904"#, 804560),
-// Two diagonals
-(r#"890....
+904"#,
+                804560,
+            ),
+            // Two diagonals
+            (
+                r#"890....
 ...*...
-....904"#, 804560),
-(r#"....890
+....904"#,
+                804560,
+            ),
+            (
+                r#"....890
 ...*...
-904...."#, 804560),
-// Single digits
-(r#"...3....
+904...."#,
+                804560,
+            ),
+            // Single digits
+            (
+                r#"...3....
 ...*...
-...7..."#, 21),
-// Left and Right above
-(r#"571.342
+...7..."#,
+                21,
+            ),
+            // Left and Right above
+            (
+                r#"571.342
 ...*...
-......."#, 195282),
-];
+......."#,
+                195282,
+            ),
+        ];
 
         for input in inputs {
-            let schematic: Vec<Vec<Input>> = input.0
-            .split('\n')
-            .map(|line| line.chars().map(Input::from).collect())
-            .collect();
-        let answer = part2(&schematic);
+            let schematic: Vec<Vec<Input>> = input
+                .0
+                .split('\n')
+                .map(|line| line.chars().map(Input::from).collect())
+                .collect();
+            let answer = part2(&schematic);
 
             assert_eq!(answer, input.1)
         }
-
     }
-    
 }

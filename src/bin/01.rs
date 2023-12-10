@@ -2,16 +2,12 @@ fn main() {
     // part 1
     let inputs = include_str!("inputs/01");
 
-    let calibration_numbers: Vec<i64>= inputs
-        .split('\n')
-        .map(calibration_number).collect();
+    let calibration_numbers: Vec<i64> = inputs.split('\n').map(calibration_number).collect();
 
     println!("part 1: {}", calibration_numbers.into_iter().sum::<i64>());
 
     // part2
-    let calibration_numbers_2: Vec<i64> = inputs.split('\n').map(
-        calibration_p2
-    ).collect();
+    let calibration_numbers_2: Vec<i64> = inputs.split('\n').map(calibration_p2).collect();
 
     println!("part 2: {}", calibration_numbers_2.into_iter().sum::<i64>());
 }
@@ -34,27 +30,23 @@ fn calibration_p2(s: &str) -> i64 {
     let chars: Vec<char> = s.chars().collect();
     let mut first: char = ' ';
     for i in 0..chars.len() {
-        match get_digit(&chars[i..]){
+        match get_digit(&chars[i..]) {
             Some(digit) => {
                 first = digit;
                 break;
-            },
-            None => {
-                continue
             }
+            None => continue,
         }
     }
 
     let mut last: char = ' ';
     for i in (0..chars.len()).rev() {
-        match get_digit(&chars[i..]){
+        match get_digit(&chars[i..]) {
             Some(digit) => {
                 last = digit;
                 break;
-            },
-            None => {
-                continue
             }
+            None => continue,
         }
     }
     let mut num_string = first.to_string();
@@ -63,7 +55,7 @@ fn calibration_p2(s: &str) -> i64 {
     num_string.parse::<i64>().unwrap()
 }
 
-fn get_digit(slice: &[char])  -> Option<char> {
+fn get_digit(slice: &[char]) -> Option<char> {
     match slice {
         ['1', ..] => Some('1'),
         ['2', ..] => Some('2'),

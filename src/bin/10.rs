@@ -1,6 +1,6 @@
 use std::{
-    collections::HashMap,
-    fmt::{Display, Write}, thread::current,
+    collections::{HashMap, HashSet, VecDeque},
+    fmt::{Display, Write},
 };
 
 fn main() {
@@ -23,6 +23,36 @@ fn main() {
 
     let part1 = pipe_grid.get_furthest_step_from_start();
     println!("part1: {}", part1);
+
+    // part 2 -> The edge case of allowing squeezing through pipes screws with
+    // the bfs colouring approach.
+    // Unless we expand the resolution of the grid to 3x - keeping track of
+    // which things in the new grid actually correspond to something on the old grid.
+    //
+    // - => becomes ...
+    //              ---
+    //              ...
+    // J => becomes .|.
+    //              -J.
+    //              ...
+    // etc..
+    // We can actually simplify this further and just keep track of what tiles
+    // in the new grid are covered by visited tiles.
+    let mut expanded_grid = pipe_grid.expand_grid();
+    expanded_grid.populate_locations_on_outside();
+
+    let mut count = 0;
+    for (y, lines) in expanded_grid.map.iter().enumerate() {
+        for (x, _) in lines.iter().enumerate() {
+            if !expanded_grid.is_visited((y, x))
+                && !expanded_grid.locs_on_outside.contains(&(y, x))
+                && expanded_grid.grid_mapping.contains_key(&(y, x))
+            {
+                count += 1;
+            }
+        }
+    }
+    println!("part2: {}", count);
 }
 
 struct PipeGrid {
@@ -33,6 +63,9 @@ struct PipeGrid {
     // Map from coord -> step from start
     visited: HashMap<(usize, usize), u64>,
     start: (usize, usize),
+    locs_on_outside: HashSet<(usize, usize)>,
+    // new -> old.
+    grid_mapping: HashMap<(usize, usize), (usize, usize)>,
 }
 
 impl PipeGrid {
@@ -44,6 +77,25 @@ impl PipeGrid {
                 print!("{}", p);
             }
         }
+    }
+    #[allow(unused)]
+    fn print_colouring(&self) {
+        let mut enclosed = 0;
+        for (y, line) in self.map.iter().enumerate() {
+            println!();
+            for (x, p) in line.iter().enumerate() {
+                if self.is_visited((y, x)) {
+                    print!("\x1b[93m{}\x1b[0m", p);
+                } else if self.locs_on_outside.contains(&(y, x)) {
+                    print!("X")
+                } else {
+                    enclosed += 1;
+                    print!("I")
+                }
+            }
+        }
+        println!();
+        println!("Total enclosed: {}", enclosed);
     }
 
     fn new(input: &str) -> Self {
@@ -67,11 +119,14 @@ impl PipeGrid {
             .collect();
 
         let visited = HashMap::new();
-
+        let locs_on_outside = HashSet::<(usize, usize)>::new();
+        let grid_mapping = HashMap::new();
         PipeGrid {
             map,
             visited,
             start: start_loc,
+            locs_on_outside,
+            grid_mapping,
         }
     }
 
@@ -172,27 +227,176 @@ impl PipeGrid {
         (max_step + 1) / 2
     }
 
-    // fn get_furthest_step_from_start(&self) -> usize {
-    //     let (_, max_dist_step) = self
-    //         .visited
-    //         .iter()
-    //         .max_by(|a, b| {
-    //             let y1 = a.0 .0;
-    //             let x1 = a.0 .1;
-    //             let y2 = b.0 .0;
-    //             let x2 = b.0 .1;
+    fn expand_grid(&self) -> PipeGrid {
+        let new_map: Vec<Vec<Pipe>> =
+            vec![vec![Pipe::Ground; self.map[0].len() * 3]; self.map.len() * 3];
+        let mut new_visited = HashMap::new();
+        // We don't actually need to care about the start location for the expanded grid.
+        let start = (0, 0);
+        let locs_on_outside = HashSet::<(usize, usize)>::new();
+        let mut grid_mapping = HashMap::new();
 
-    //             let abs_diff_x1 = x1.abs_diff(self.start.1);
-    //             let abs_diff_y1 = y1.abs_diff(self.start.0);
-    //             let abs_diff_x2 = x2.abs_diff(self.start.1);
-    //             let abs_diff_y2 = y2.abs_diff(self.start.0);
+        for (y, lines) in self.map.iter().enumerate() {
+            for (x, pipe) in lines.iter().enumerate() {
+                // map the center of the new grid tile onto the old one.
+                grid_mapping.insert((3 * y + 1, 3 * x + 1), (y, x));
 
-    //             (abs_diff_x1 + abs_diff_y1).cmp(&(abs_diff_x2 + abs_diff_y2))
-    //         })
-    //         .unwrap();
+                // If we aren't visited, then we can simplify and just leave it.
+                if self.is_visited((y, x)) {
+                    match pipe {
+                        Pipe::VertLine => {
+                            // .|.
+                            // .|.
+                            // .|.
+                            // the actual step number doesn't matter in the expanded map.
+                            new_visited.insert((y * 3, x * 3 + 1), 0);
+                            new_visited.insert((y * 3 + 1, x * 3 + 1), 0);
+                            new_visited.insert((y * 3 + 2, x * 3 + 1), 0);
+                        }
+                        Pipe::HoriLine => {
+                            // ...
+                            // ---
+                            // ...
 
-    //     *max_dist_step as usize
-    // }
+                            new_visited.insert((y * 3 + 1, x * 3), 0);
+                            new_visited.insert((y * 3 + 1, x * 3 + 1), 0);
+                            new_visited.insert((y * 3 + 1, x * 3 + 2), 0);
+                        }
+                        Pipe::L => {
+                            // .|.
+                            // .L-
+                            // ...
+
+                            new_visited.insert((y * 3, x * 3 + 1), 0);
+                            new_visited.insert((y * 3 + 1, x * 3 + 1), 0);
+                            new_visited.insert((y * 3 + 1, x * 3 + 2), 0);
+                        }
+                        Pipe::J => {
+                            // .|.
+                            // -J.
+                            // ...
+
+                            new_visited.insert((y * 3, x * 3 + 1), 0);
+                            new_visited.insert((y * 3 + 1, x * 3), 0);
+                            new_visited.insert((y * 3 + 1, x * 3 + 1), 0);
+                        }
+                        Pipe::Seven => {
+                            // ...
+                            // -7.
+                            // .|.
+                            new_visited.insert((y * 3 + 1, x * 3), 0);
+                            new_visited.insert((y * 3 + 1, x * 3 + 1), 0);
+                            new_visited.insert((y * 3 + 2, x * 3 + 1), 0);
+                        }
+                        Pipe::F => {
+                            // ...
+                            // .F-
+                            // .|.
+                            new_visited.insert((y * 3 + 1, x * 3 + 2), 0);
+                            new_visited.insert((y * 3 + 1, x * 3 + 1), 0);
+                            new_visited.insert((y * 3 + 2, x * 3 + 1), 0);
+                        }
+                        Pipe::Ground => {
+                            panic!("unexpected visited ground")
+                        }
+                        Pipe::Start => {
+                            // start is a special case. hard code this to match the input (ctrl c, ctrlv the correct match)
+                            new_visited.insert((y * 3, x * 3 + 1), 0);
+                            new_visited.insert((y * 3 + 1, x * 3 + 1), 0);
+                            new_visited.insert((y * 3 + 2, x * 3 + 1), 0);
+                        }
+                    }
+                }
+            }
+        }
+
+        PipeGrid {
+            map: new_map,
+            visited: new_visited,
+            start,
+            locs_on_outside,
+            grid_mapping,
+        }
+    }
+
+    fn populate_locations_on_outside(&mut self) {
+        // BFS queue.
+        let mut visited_nodes_bfs = HashSet::<(usize, usize)>::new();
+        let mut queue = VecDeque::new();
+        for y in 0..self.map.len() {
+            // If we are not in the loop, add to starting locs.
+            if !self.is_visited((y, 0)) && !self.locs_on_outside.contains(&(y, 0)) {
+                self.locs_on_outside.insert((y, 0));
+                queue.push_back((y, 0));
+            }
+            if !self.is_visited((y, self.map[0].len() - 1))
+                && !self.locs_on_outside.contains(&(y, self.map[0].len() - 1))
+            {
+                self.locs_on_outside.insert((y, self.map[0].len() - 1));
+                queue.push_back((y, self.map[0].len() - 1))
+            }
+        }
+        for x in 0..self.map[0].len() {
+            // If we are not in the loop, add to starting locs.
+            if !self.is_visited((0, x)) && !self.locs_on_outside.contains(&(0, x)) {
+                self.locs_on_outside.insert((0, x));
+                queue.push_back((0, x))
+            }
+
+            if !self.is_visited((self.map.len() - 1, x))
+                && !self.locs_on_outside.contains(&(self.map.len() - 1, x))
+            {
+                self.locs_on_outside.insert((self.map.len() - 1, x));
+                queue.push_back((self.map.len() - 1, x))
+            }
+        }
+
+        // Start working on the queue.
+        while let Some(loc) = queue.pop_front() {
+            if loc.0 > self.map.len()
+                || loc.1 > self.map[0].len()
+                || visited_nodes_bfs.contains(&loc)
+            {
+                continue;
+            }
+            // Just need to check 4 cardinal directions if they are:
+            // already coloured, or in the loop.
+            self.locs_on_outside.insert(loc);
+
+            // up
+            if loc.0 > 0 {
+                let loc_above = (loc.0 - 1, loc.1);
+                if !self.is_visited(loc_above) && !self.locs_on_outside.contains(&loc_above) {
+                    queue.push_back(loc_above);
+                }
+            }
+            // Down
+            if loc.0 < self.map.len() - 1 {
+                let loc_below = (loc.0 + 1, loc.1);
+                if !self.is_visited(loc_below) && !self.locs_on_outside.contains(&loc_below) {
+                    queue.push_back(loc_below);
+                }
+            }
+
+            // Left
+            if loc.1 > 0 {
+                let loc_left = (loc.0, loc.1 - 1);
+                if !self.is_visited(loc_left) && !self.locs_on_outside.contains(&loc_left) {
+                    queue.push_back(loc_left);
+                }
+            }
+
+            // Right
+            if loc.1 < self.map[0].len() - 1 {
+                let loc_right = (loc.0, loc.1 + 1);
+                if !self.is_visited(loc_right) && !self.locs_on_outside.contains(&loc_right) {
+                    queue.push_back(loc_right);
+                }
+            }
+
+            visited_nodes_bfs.insert(loc);
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

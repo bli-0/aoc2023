@@ -177,6 +177,7 @@ fn main() {
     println!("part2: {}", location);
 }
 
+#[allow(clippy::type_complexity)]
 fn parse(inputs: &str) -> (Vec<i64>, HashMap<(Thing, Thing), Vec<Map>>) {
     // Much faster to just hard code the line nos.
     let lines: Vec<&str> = inputs.split('\n').collect();

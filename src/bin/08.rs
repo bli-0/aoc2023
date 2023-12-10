@@ -113,7 +113,7 @@ impl From<&str> for Nodes {
 }
 
 fn lcm(x: i64, y: i64) -> i64 {
-    x * y / gcd(x,y)
+    x * y / gcd(x, y)
 }
 
 fn gcd(x: i64, y: i64) -> i64 {

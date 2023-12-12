@@ -36,13 +36,6 @@ fn main() {
         })
         .collect();
 
-    // let mut possible_arrangements2 = vec![];
-
-    // for (i, record) in records2.iter().enumerate() {
-    //     possible_arrangements2.push(record.possible_arrangements(&mut state));
-    //     println!("finished record: {}", i);
-    // }
-
     let possible_arrangements2: Vec<u64> = records2
         .iter()
         .map(|record| record.possible_arrangements(&mut state))

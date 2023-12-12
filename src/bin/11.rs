@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 
 fn main() {
     let inputs = include_str!("inputs/11");

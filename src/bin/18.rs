@@ -58,6 +58,7 @@ fn main() {
 
 // Picks theorem is:
 // Area = Sum of Interior + Sum of Perimeter/2 + 1;
+// Shoelace gets you a way to get Sum of Interior.
 fn area_theorem(corners: &[(i64, i64)], instructions: &[Instruction]) -> u64 {
     // Shoelace
     let mut sum_of_determinants: i64 = 0;

@@ -1,60 +1,13 @@
-use std::{
-    collections::{HashSet, VecDeque},
-};
-
 use itertools::Itertools;
 
 fn main() {
     let inputs = include_str!("inputs/18");
     let instructions: Vec<Instruction> = inputs.lines().map(Instruction::from_str).collect();
 
-    let mut current_point: (i64, i64) = (500, 500);
-    let mut grid = vec![vec![Space::new(0); 1000]; 1000];
-    for inst in instructions.iter() {
-        match inst.direction {
-            Direction::U => {
-                let new_point = (current_point.0 - inst.amount as i64, current_point.1);
-                for i in new_point.0..current_point.0 {
-                    grid[i as usize][new_point.1 as usize].color = inst.hex;
-                    grid[i as usize][new_point.1 as usize].is_dug = true;
-                }
-                current_point = new_point;
-            }
-            Direction::D => {
-                let new_point = (current_point.0 + inst.amount as i64, current_point.1);
-                for i in current_point.0 + 1..=new_point.0 {
-                    grid[i as usize][new_point.1 as usize].color = inst.hex;
-                    grid[i as usize][new_point.1 as usize].is_dug = true;
-                }
-                current_point = new_point;
-            }
-            Direction::L => {
-                let new_point = (current_point.0, current_point.1 - inst.amount as i64);
-                for j in new_point.1..current_point.1 {
-                    grid[new_point.0 as usize][j as usize].color = inst.hex;
-                    grid[new_point.0 as usize][j as usize].is_dug = true;
-                }
-                current_point = new_point;
-            }
-            Direction::R => {
-                let new_point = (current_point.0, current_point.1 + inst.amount as i64);
-                for j in current_point.1 + 1..=new_point.1 {
-                    grid[new_point.0 as usize][j as usize].color = inst.hex;
-                    grid[new_point.0 as usize][j as usize].is_dug = true;
-                }
-                current_point = new_point;
-            }
-        }
-    }
-
-    mark_inner(&mut grid);
-    print_grid(&grid);
-    let part1 = count_inner(&grid);
-    println!("part1: {}", part1);
-
-    // Part 2 - > completely fucks the model for p1.
+    // Part 2 - > completely fucks the model for p1 so this got re-written.
     // After some googling: https://en.wikipedia.org/wiki/Pick%27s_theorem + https://en.wikipedia.org/wiki/Shoelace_formula
-    let mut current_vertex = (0,0);
+
+    let mut current_vertex = (0, 0);
     let mut corners = vec![];
     for inst in instructions.iter() {
         match inst.direction {
@@ -65,76 +18,45 @@ fn main() {
         }
         corners.push(current_vertex);
     }
+    let part1 = area_theorem(&corners, &instructions);
+    println!("part1: {}", part1);
 
-    let part2 = area_theorem(&corners, &instructions);
-    println!("part2: {}", part2);
+    let mut current_vertex2 = (0, 0);
+    let mut corners2 = vec![];
+    let real_instructions: Vec<Instruction> = instructions
+        .iter()
+        .map(|i| {
+            let hex_str = i.hex.as_str();
+            let direction = match &hex_str[hex_str.len() - 1..hex_str.len()] {
+                "0" => Direction::R,
+                "1" => Direction::D,
+                "2" => Direction::L,
+                "3" => Direction::U,
+                x => panic!("unexpected direction: {}", x),
+            };
+            let amount = u64::from_str_radix(&hex_str[0..hex_str.len() - 1], 16).unwrap();
 
-}
-
-#[allow(unused)]
-fn print_grid(grid: &[Vec<Space>]) {
-    println!();
-    for i in 0..grid.len() {
-        for j in 0..grid[0].len() {
-            if grid[i][j].is_dug {
-                print!("#");
-            } else {
-                print!(".");
+            Instruction {
+                amount,
+                direction,
+                hex: "".to_string(),
             }
+        })
+        .collect();
+    for inst in real_instructions.iter() {
+        match inst.direction {
+            Direction::U => current_vertex2.0 += (inst.amount) as i64,
+            Direction::D => current_vertex2.0 -= (inst.amount) as i64,
+            Direction::L => current_vertex2.1 -= (inst.amount) as i64,
+            Direction::R => current_vertex2.1 += (inst.amount) as i64,
         }
-        println!()
+        corners2.push(current_vertex2);
     }
+    let part2 = area_theorem(&corners2, &real_instructions);
+    println!("part2: {}", part2);
 }
 
-// This is all used in part 1 that got binned in part2.
-// fn mark_inner(grid: &mut [Vec<Space>]) {
-//     let mut outer = HashSet::<(usize, usize)>::new();
-
-//     let mut queue = VecDeque::<(usize, usize)>::new();
-//     queue.push_front((0, 0));
-
-//     while let Some(next) = queue.pop_front() {
-//         if grid[next.0][next.1].is_dug || outer.contains(&next) {
-//             continue;
-//         }
-
-//         outer.insert(next);
-//         if next.0 > 0 {
-//             queue.push_back((next.0 - 1, next.1));
-//         }
-//         if next.0 < grid.len() - 1 {
-//             queue.push_back((next.0 + 1, next.1));
-//         }
-//         if next.1 > 0 {
-//             queue.push_back((next.0, next.1 - 1));
-//         }
-//         if next.1 < grid[0].len() - 1 {
-//             queue.push_back((next.0, next.1 + 1));
-//         }
-//     }
-
-//     for i in 0..grid.len() {
-//         for j in 0..grid[0].len() {
-//             if !outer.contains(&(i,j)) {
-//                 grid[i][j].is_dug = true;
-//             }
-//         }
-//     }
-// }
-
-// fn count_inner(grid: &[Vec<Space>]) -> u64 {
-//     let mut sum = 0;
-//     for i in 0..grid.len() {
-//         for j in 0..grid[0].len() {
-//             if grid[i][j].is_dug {
-//                 sum += 1;
-//             }
-//         }
-//     }
-//     sum
-// }
-
-// Picks theorem is: 
+// Picks theorem is:
 // Area = Sum of Interior + Sum of Perimeter/2 + 1;
 fn area_theorem(corners: &[(i64, i64)], instructions: &[Instruction]) -> u64 {
     // Shoelace
@@ -158,13 +80,13 @@ fn area_theorem(corners: &[(i64, i64)], instructions: &[Instruction]) -> u64 {
         perimeter_length += i.amount;
     }
 
-    area + perimeter_length/2 + 1
+    area + perimeter_length / 2 + 1
 }
 
 struct Instruction {
     direction: Direction,
     amount: u64,
-    hex: u64,
+    hex: String,
 }
 
 impl Instruction {
@@ -174,7 +96,7 @@ impl Instruction {
         Self {
             direction: Direction::from_str(direction_str),
             amount: amount_str.parse().unwrap(),
-            hex: u64::from_str_radix(&hex_str[2..hex_str.len() - 1], 16).unwrap(),
+            hex: hex_str[2..hex_str.len() - 1].to_string(),
         }
     }
 }
@@ -194,21 +116,6 @@ impl Direction {
             "L" => Self::L,
             "R" => Self::R,
             _ => panic!("unexpected str"),
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
-struct Space {
-    color: u64,
-    is_dug: bool,
-}
-
-impl Space {
-    fn new(color: u64) -> Self {
-        Self {
-            color,
-            is_dug: false,
         }
     }
 }

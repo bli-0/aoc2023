@@ -61,7 +61,7 @@ fn main() {
     let part1 = total_high * total_low;
     println!("part1: {}", part1);
 
-    // Part2 - get the LCM of the iterations it takes for each 
+    // Part2 - get the LCM of the iterations it takes for each
     // inputs into the node before RX (a conjunction node)
     // to be high. The LCM of this is the first iteration where they will
     // all be high, hence RX will get a low pulse.

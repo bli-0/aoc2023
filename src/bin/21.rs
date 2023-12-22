@@ -18,17 +18,50 @@ fn main() {
     // A step forward and back is two steps that result in the same place.
     // So it is all the locations that are traversable in the max distance,
     // and even distance from the beginning.
-
     let possible_locations = traverse_graph(&graph, 64, start);
     let part1 = find_possibilities(&possible_locations, start, 64);
     println!("part1: {}", part1);
 
-    let possible_locations2 = traverse_graph_infinity(&graph, 26501365, start);
-    let part2 = find_possibilities2(
-        &possible_locations2,
-        (start.0 as i64, start.1 as i64),
-        26501365,
+    // Part 2 needs a geometric solution. No shot for me to get this without help:
+    // https://github.com/villuna/aoc23/wiki/A-Geometric-solution-to-advent-of-code-2023,-day-21
+    let all_possible_locations = traverse_graph(&graph, 131, start);
+    let even_visited_locations = all_possible_locations
+        .iter()
+        .filter(|val| distance(**val, start) % 2 == 0)
+        .count();
+    let odd_visited_locations = all_possible_locations
+        .iter()
+        .filter(|val| distance(**val, start) % 2 == 1)
+        .count();
+    let even_locations_from_center = all_possible_locations
+        .iter()
+        .filter(|val| distance(**val, start) % 2 == 0 && distance(**val, start) > 65)
+        .count();
+    let odd_locations_from_center = all_possible_locations
+        .iter()
+        .filter(|val| distance(**val, start) % 2 == 1 && distance(**val, start) > 65)
+        .count();
+
+    println!(
+        "total odd: {}, total even:{}, odd_corners: {}, even_corners: {}",
+        odd_visited_locations,
+        even_visited_locations,
+        odd_locations_from_center,
+        even_locations_from_center
     );
+
+    let total_steps = 26501365;
+    let n = (total_steps - (graph.len() / 2)) / graph.len();
+    assert_eq!(n, 202300);
+
+    // Brute force low values to make sure the answers are equal.
+    // let possible_locations2 = traverse_graph_infinity(&graph, total_steps, start);
+    // let part2_brute = find_possibilities2(&possible_locations2, (start.0 as i64, start.1 as i64), total_steps as i64);
+    // println!("part2 brute: {}", part2_brute);
+
+    let part2 = ((n + 1) * (n + 1)) * odd_visited_locations + (n * n) * even_visited_locations
+        - (n + 1) * odd_locations_from_center
+        + n * even_locations_from_center;
     println!("part2: {}", part2);
 }
 
@@ -51,6 +84,7 @@ fn distance(a: (usize, usize), b: (usize, usize)) -> usize {
     a.0.abs_diff(b.0) + a.1.abs_diff(b.1)
 }
 
+#[allow(unused)]
 fn find_possibilities2(
     possible_locations: &HashSet<(i64, i64)>,
     start: (i64, i64),
@@ -66,6 +100,7 @@ fn find_possibilities2(
     total_possible
 }
 
+#[allow(unused)]
 fn distance2(a: (i64, i64), b: (i64, i64)) -> i64 {
     (a.0.abs_diff(b.0) + a.1.abs_diff(b.1)).try_into().unwrap()
 }
@@ -140,6 +175,7 @@ fn traverse_graph(
     visited_locations
 }
 
+#[allow(unused)]
 fn map_i64_coord_to_usize(c: (i64, i64), y_bound: usize, x_bound: usize) -> (usize, usize) {
     (
         c.0.rem_euclid(y_bound as i64) as usize,
@@ -147,6 +183,7 @@ fn map_i64_coord_to_usize(c: (i64, i64), y_bound: usize, x_bound: usize) -> (usi
     )
 }
 
+#[allow(unused)]
 fn traverse_graph_infinity(
     graph: &[Vec<char>],
     total_steps: usize,

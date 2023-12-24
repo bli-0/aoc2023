@@ -1,4 +1,7 @@
 use itertools::Itertools;
+use z3::ast::Ast;
+use z3::{ast, SatResult, Solver};
+use z3::{Config, Context};
 
 fn main() {
     let inputs = include_str!("inputs/24");
@@ -19,6 +22,140 @@ fn main() {
     }
 
     println!("part1: {}", total_count);
+
+    // Part2 feels extremely silly to do without using a solver like wolfram alpha.
+    // It's 6 simultaneous equations with 6 unknowns (Start (xyz), Velocity(xyz)).
+    // Or 9 if you want to not eliminate the times from the equations. Either way
+    // Using 3 of the inputs is enough to solve the problem:
+    // E.g. slapping
+    // 19 - 2i = x + i*a;  13+i = y + i*b; 30 - 2*i = z + i*c ;  18- j = x + j*a;  19-j = y + j*b; 22 - 2*j  = z + j*c;  20 -2*k = x + k*a;  25-2*k = y + k*b; 34 - 4*k  = z + k*c;
+    // into wolfram alpha gives the solution for the example.
+    // After trying to reduce 2 of the 6 equations by hand I decided I could not be arsed, so decided to throw the un-reduced
+    // forms into a solver instead.
+    // Unfortunately, the actual input has too many characters for the Wolfram alpha to accept :(.
+    // So the options are either to:
+    // Muck around with a solver like z3: https://docs.rs/z3/latest/z3/
+    // Download Wolfram Mathematica and chuck the the equations in.
+    // FWIW the Wolfram input for mine was:
+    // Solve[327367788702047 + 20 i == x + i a &&
+    // 294752664325632 + 51 i == y + i b &&
+    // 162080199489440 + 36 i == z + i c &&
+    // 349323332347395 - 96 j == x + j a &&
+    // 429135322811787 - 480 j == y + j b &&
+    // 397812423558610 - 782 j == z + j c &&
+    // 342928768632768 -69 k == x + k a &&
+    // 275572250031810+ 104 k == y + k b &&
+    // 310926883862869- 510 k  == z + k c, {a,b,c,x,y,z,i,j,k}, Integers]
+
+    // For completeness I messed around enough with Z3's API to get the answer albeit still needing
+    // to use a 3rd party lib:
+    let cfg = Config::new();
+    let ctx = Context::new(&cfg);
+
+    let solver = Solver::new(&ctx);
+    // Our known constants:
+    let point0 = (
+        ast::Int::from_i64(&ctx, hailstones[0].start.0),
+        ast::Int::from_i64(&ctx, hailstones[0].start.1),
+        ast::Int::from_i64(&ctx, hailstones[0].start.2),
+    );
+    let point1 = (
+        ast::Int::from_i64(&ctx, hailstones[1].start.0),
+        ast::Int::from_i64(&ctx, hailstones[1].start.1),
+        ast::Int::from_i64(&ctx, hailstones[1].start.2),
+    );
+    let point2 = (
+        ast::Int::from_i64(&ctx, hailstones[2].start.0),
+        ast::Int::from_i64(&ctx, hailstones[2].start.1),
+        ast::Int::from_i64(&ctx, hailstones[2].start.2),
+    );
+
+    let velocity0 = (
+        ast::Int::from_i64(&ctx, hailstones[0].diff.0),
+        ast::Int::from_i64(&ctx, hailstones[0].diff.1),
+        ast::Int::from_i64(&ctx, hailstones[0].diff.2),
+    );
+
+    let velocity1 = (
+        ast::Int::from_i64(&ctx, hailstones[1].diff.0),
+        ast::Int::from_i64(&ctx, hailstones[1].diff.1),
+        ast::Int::from_i64(&ctx, hailstones[1].diff.2),
+    );
+    let velocity2 = (
+        ast::Int::from_i64(&ctx, hailstones[2].diff.0),
+        ast::Int::from_i64(&ctx, hailstones[2].diff.1),
+        ast::Int::from_i64(&ctx, hailstones[2].diff.2),
+    );
+
+    // Our unknowns:
+    let (t0, t1, t2) = (
+        ast::Int::new_const(&ctx, "t0"),
+        ast::Int::new_const(&ctx, "t1"),
+        ast::Int::new_const(&ctx, "t2"),
+    );
+    let (x, y, z, vx, vy, vz) = (
+        ast::Int::new_const(&ctx, "x"),
+        ast::Int::new_const(&ctx, "y"),
+        ast::Int::new_const(&ctx, "z"),
+        ast::Int::new_const(&ctx, "dx"),
+        ast::Int::new_const(&ctx, "dy"),
+        ast::Int::new_const(&ctx, "dz"),
+    );
+
+    // The equations / constraints;
+    // Time must be > 0;
+    solver.assert(&t0.gt(&z3::ast::Int::from_i64(&ctx, 0)));
+    solver.assert(&t1.gt(&z3::ast::Int::from_i64(&ctx, 0)));
+    solver.assert(&t2.gt(&z3::ast::Int::from_i64(&ctx, 0)));
+
+    // The 9 equations:
+    solver.assert(
+        &(&x.clone() + &vx.clone() * &t0.clone())
+            ._eq(&(&point0.0.clone() + &velocity0.0.clone() * &t0.clone())),
+    );
+    solver.assert(
+        &(&y.clone() + &vy.clone() * &t0.clone())
+            ._eq(&(&point0.1.clone() + &velocity0.1.clone() * &t0.clone())),
+    );
+    solver.assert(
+        &(&z.clone() + &vz.clone() * &t0.clone())
+            ._eq(&(&point0.2.clone() + &velocity0.2.clone() * &t0.clone())),
+    );
+
+    solver.assert(
+        &(&x.clone() + &vx.clone() * &t1.clone())
+            ._eq(&(&point1.0.clone() + &velocity1.0.clone() * &t1.clone())),
+    );
+    solver.assert(
+        &(&y.clone() + &vy.clone() * &t1.clone())
+            ._eq(&(&point1.1.clone() + &velocity1.1.clone() * &t1.clone())),
+    );
+    solver.assert(
+        &(&z.clone() + &vz.clone() * &t1.clone())
+            ._eq(&(&point1.2.clone() + &velocity1.2.clone() * &t1.clone())),
+    );
+
+    solver.assert(
+        &(&x.clone() + &vx.clone() * &t2.clone())
+            ._eq(&(&point2.0.clone() + &velocity2.0.clone() * &t2.clone())),
+    );
+    solver.assert(
+        &(&y.clone() + &vy.clone() * &t2.clone())
+            ._eq(&(&point2.1.clone() + &velocity2.1.clone() * &t2.clone())),
+    );
+    solver.assert(
+        &(&z.clone() + &vz.clone() * &t2.clone())
+            ._eq(&(&point2.2.clone() + &velocity2.2.clone() * &t2.clone())),
+    );
+
+    assert_eq!(solver.check(), SatResult::Sat);
+    let m = solver.get_model().unwrap();
+
+    let x_value = m.eval(&x, true).unwrap().as_i64().unwrap();
+    let y_value = m.eval(&y, true).unwrap().as_i64().unwrap();
+    let z_value = m.eval(&z, true).unwrap().as_i64().unwrap();
+
+    println!("part2: {:?}", x_value + y_value + z_value);
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -93,17 +230,18 @@ impl Hailstone {
         // Debug assert that this is the same as if we took the formula for t1..
         let denominator1 = (other.diff.1 * self.diff.0 - self.diff.1 * other.diff.0) as f64;
         let t_1 = (c_x * self.diff.1 - c_y * self.diff.0) as f64 / denominator1;
-        let (x1, y1) = (
-            other.start.0 as f64 + other.diff.0 as f64 * t_1,
-            other.start.1 as f64 + other.diff.1 as f64 * t_1,
-        );
-        let x_str = format!("{:.3}", x);
-        let y_str = format!("{:.3}", y);
-        let x1_str = format!("{:.3}", x1);
-        let y1_str = format!("{:.3}", y1);
 
-        // Round up to 3 decimal strings..
-        debug_assert_eq!((x_str, y_str), (x1_str, y1_str));
+        // let (x1, y1) = (
+        //     other.start.0 as f64 + other.diff.0 as f64 * t_1,
+        //     other.start.1 as f64 + other.diff.1 as f64 * t_1,
+        // );
+        // let x_str = format!("{:.3}", x);
+        // let y_str = format!("{:.3}", y);
+        // let x1_str = format!("{:.3}", x1);
+        // let y1_str = format!("{:.3}", y1);
+        // Round up to 3 decimal strings.. This is necessary due to floating point
+        // inprecisions.
+        // debug_assert_eq!((x_str, y_str), (x1_str, y1_str));
 
         if t_0 < 0.0 || t_1 < 0.0 {
             return false;

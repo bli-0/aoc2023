@@ -1,7 +1,6 @@
 use itertools::Itertools;
-use z3::ast::Ast;
-use z3::{ast, SatResult, Solver};
-use z3::{Config, Context};
+use z3::ast::{Ast, Int};
+use z3::{Config, Context, SatResult, Solver};
 
 fn main() {
     let inputs = include_str!("inputs/24");
@@ -55,58 +54,58 @@ fn main() {
     let solver = Solver::new(&ctx);
     // Our known constants:
     let point0 = (
-        ast::Int::from_i64(&ctx, hailstones[0].start.0),
-        ast::Int::from_i64(&ctx, hailstones[0].start.1),
-        ast::Int::from_i64(&ctx, hailstones[0].start.2),
+        Int::from_i64(&ctx, hailstones[0].start.0),
+        Int::from_i64(&ctx, hailstones[0].start.1),
+        Int::from_i64(&ctx, hailstones[0].start.2),
     );
     let point1 = (
-        ast::Int::from_i64(&ctx, hailstones[1].start.0),
-        ast::Int::from_i64(&ctx, hailstones[1].start.1),
-        ast::Int::from_i64(&ctx, hailstones[1].start.2),
+        Int::from_i64(&ctx, hailstones[1].start.0),
+        Int::from_i64(&ctx, hailstones[1].start.1),
+        Int::from_i64(&ctx, hailstones[1].start.2),
     );
     let point2 = (
-        ast::Int::from_i64(&ctx, hailstones[2].start.0),
-        ast::Int::from_i64(&ctx, hailstones[2].start.1),
-        ast::Int::from_i64(&ctx, hailstones[2].start.2),
+        Int::from_i64(&ctx, hailstones[2].start.0),
+        Int::from_i64(&ctx, hailstones[2].start.1),
+        Int::from_i64(&ctx, hailstones[2].start.2),
     );
 
     let velocity0 = (
-        ast::Int::from_i64(&ctx, hailstones[0].diff.0),
-        ast::Int::from_i64(&ctx, hailstones[0].diff.1),
-        ast::Int::from_i64(&ctx, hailstones[0].diff.2),
+        Int::from_i64(&ctx, hailstones[0].diff.0),
+        Int::from_i64(&ctx, hailstones[0].diff.1),
+        Int::from_i64(&ctx, hailstones[0].diff.2),
     );
 
     let velocity1 = (
-        ast::Int::from_i64(&ctx, hailstones[1].diff.0),
-        ast::Int::from_i64(&ctx, hailstones[1].diff.1),
-        ast::Int::from_i64(&ctx, hailstones[1].diff.2),
+        Int::from_i64(&ctx, hailstones[1].diff.0),
+        Int::from_i64(&ctx, hailstones[1].diff.1),
+        Int::from_i64(&ctx, hailstones[1].diff.2),
     );
     let velocity2 = (
-        ast::Int::from_i64(&ctx, hailstones[2].diff.0),
-        ast::Int::from_i64(&ctx, hailstones[2].diff.1),
-        ast::Int::from_i64(&ctx, hailstones[2].diff.2),
+        Int::from_i64(&ctx, hailstones[2].diff.0),
+        Int::from_i64(&ctx, hailstones[2].diff.1),
+        Int::from_i64(&ctx, hailstones[2].diff.2),
     );
 
     // Our unknowns:
     let (t0, t1, t2) = (
-        ast::Int::new_const(&ctx, "t0"),
-        ast::Int::new_const(&ctx, "t1"),
-        ast::Int::new_const(&ctx, "t2"),
+        Int::new_const(&ctx, "t0"),
+        Int::new_const(&ctx, "t1"),
+        Int::new_const(&ctx, "t2"),
     );
     let (x, y, z, vx, vy, vz) = (
-        ast::Int::new_const(&ctx, "x"),
-        ast::Int::new_const(&ctx, "y"),
-        ast::Int::new_const(&ctx, "z"),
-        ast::Int::new_const(&ctx, "dx"),
-        ast::Int::new_const(&ctx, "dy"),
-        ast::Int::new_const(&ctx, "dz"),
+        Int::new_const(&ctx, "x"),
+        Int::new_const(&ctx, "y"),
+        Int::new_const(&ctx, "z"),
+        Int::new_const(&ctx, "dx"),
+        Int::new_const(&ctx, "dy"),
+        Int::new_const(&ctx, "dz"),
     );
 
     // The equations / constraints;
     // Time must be > 0;
-    solver.assert(&t0.gt(&z3::ast::Int::from_i64(&ctx, 0)));
-    solver.assert(&t1.gt(&z3::ast::Int::from_i64(&ctx, 0)));
-    solver.assert(&t2.gt(&z3::ast::Int::from_i64(&ctx, 0)));
+    solver.assert(&t0.gt(&Int::from_i64(&ctx, 0)));
+    solver.assert(&t1.gt(&Int::from_i64(&ctx, 0)));
+    solver.assert(&t2.gt(&Int::from_i64(&ctx, 0)));
 
     // The 9 equations:
     solver.assert(
